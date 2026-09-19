@@ -1,0 +1,15 @@
+<!doctype html><html lang="ja"><meta charset="utf-8"><title>Simple Mind Map regression suite</title>
+<style>body{font:14px system-ui}iframe{position:absolute;width:1px;height:1px;border:0;opacity:0}.fail{color:#b00020}</style>
+<h1>Regression suite</h1><ol id="results"></ol>
+<script>
+(async()=>{
+for(const step of [4,5,6,7,8,9,10,11,12,13,14,15]){
+ const frame=document.createElement('iframe');frame.src=`step${step}.html?suite=${Date.now()}`;document.body.append(frame);
+ await new Promise(resolve=>frame.addEventListener('load',resolve,{once:true}));
+ const start=Date.now();while(frame.contentDocument.body.dataset.done!=='true'&&Date.now()-start<30000)await new Promise(r=>setTimeout(r,100));
+ const lines=[...frame.contentDocument.querySelectorAll('#results li')],failed=lines.filter(item=>item.classList.contains('fail'));
+ const result=document.createElement('li');result.textContent=`STEP${step}: ${failed.length?'FAIL':'PASS'} (${lines.length}件)`;if(failed.length){result.className='fail';result.title=failed.map(item=>item.textContent).join('\n')}document.querySelector('#results').append(result);frame.remove();
+}
+document.body.dataset.done='true';
+})();
+</script></html>

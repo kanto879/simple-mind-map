@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#4386ed">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Simple Mind Map">
+  <title>Simple Mind Map</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png">
+  <link rel="icon" type="image/png" href="./icons/icon-192.png">
+  <link rel="stylesheet" href="style.css?v=15">
+  <script src="script.js?v=15" defer></script>
+</head>
+<body>
+  <svg class="icon-definitions" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+    <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></symbol>
+    <symbol id="i-work" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="14" rx="3"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 12a24 24 0 0 0 18 0M10 13v3h4v-3"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M12 5C9 3 6 3 3 4v15c3-1 6-1 9 1 3-2 6-2 9-1V4c-3-1-6-1-9 1Zm0 0v15"/></symbol>
+    <symbol id="i-plane" viewBox="0 0 24 24"><path d="m21 3-6 18-4-8-8-4 18-6ZM11 13l5-5"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 3v17h17M8 15v-4M13 15V7M18 15v-6"/></symbol>
+    <symbol id="i-robot" viewBox="0 0 24 24"><rect x="4" y="7" width="16" height="14" rx="4"/><path d="M12 3v4M2 12v5M22 12v5M9 17h6M8 11v2M16 11v2"/><circle cx="12" cy="2" r="1"/></symbol>
+    <symbol id="i-heart" viewBox="0 0 24 24"><path d="M20 5c-3-3-6-1-8 1-2-2-5-4-8-1-4 4 0 9 8 15 8-6 12-11 8-15Z"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7"/></symbol>
+    <symbol id="i-undo" viewBox="0 0 24 24"><path d="m8 4-5 5 5 5M3 9h10a7 7 0 0 1 7 7v3"/></symbol>
+    <symbol id="i-redo" viewBox="0 0 24 24"><path d="m16 4 5 5-5 5M21 9H11a7 7 0 0 0-7 7v3"/></symbol>
+    <symbol id="i-share" viewBox="0 0 24 24"><path d="M12 15V3m-4 4 4-4 4 4M5 11v9h14v-9"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+    <symbol id="i-branch" viewBox="0 0 24 24"><rect x="3" y="8" width="6" height="8" rx="2"/><path d="M9 12h5M14 5v14M14 5h6M14 19h6"/></symbol>
+    <symbol id="i-style" viewBox="0 0 24 24"><path d="m15 3 6 6-9 9-6-6 9-9ZM6 12l-3 9 9-3M12 6l6 6"/></symbol>
+    <symbol id="i-smile" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 9h.01M16 9h.01M8 14c2 3 6 3 8 0"/></symbol>
+    <symbol id="i-note" viewBox="0 0 24 24"><path d="M14 3H5v18h14V8l-5-5Zm0 0v5h5M8 12h8M8 16h5"/></symbol>
+    <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4ZM13.5 6.5l4 4M12 20h8"/></symbol>
+    <symbol id="i-fit" viewBox="0 0 24 24"><path d="M9 4H4v5M15 4h5v5M4 15v5h5M20 15v5h-5"/></symbol>
+    <symbol id="i-logo" viewBox="0 0 24 24"><rect x="9" y="9" width="6" height="6" rx="2"/><path d="M12 9V5M9 12H5M15 12h4M12 15v4"/><circle cx="12" cy="3" r="2"/><circle cx="3" cy="12" r="2"/><circle cx="21" cy="12" r="2"/><circle cx="12" cy="21" r="2"/></symbol>
+  </defs></svg>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="マップ一覧">
+      <a class="brand" href="./"><span class="brand-mark"><svg class="icon"><use href="#i-logo"/></svg></span><span>Simple Mind Map</span></a>
+      <button id="new-map" class="new-map" data-action="new-map"><svg class="icon"><use href="#i-plus"/></svg>新しいマップ</button>
+      <div class="node-search-box">
+        <div class="search-field"><svg class="icon"><use href="#i-search"/></svg><input id="node-search" type="search" aria-label="このマップ内を検索" aria-controls="desktop-search-results" placeholder="このマップ内を検索" autocomplete="off"><span>⌘ F</span></div>
+        <div id="desktop-search-results" class="search-results" role="listbox" aria-label="ノード検索結果" hidden></div>
+      </div>
+      <h2 class="section-label">マイマップ</h2>
+      <nav class="map-list" aria-label="マイマップ"></nav>
+      <div class="sidebar-footer"><button id="trash-button" class="map-item" data-action="trash"><svg class="icon"><use href="#i-trash"/></svg><span>ゴミ箱</span><span id="trash-count" class="trash-count" hidden></span></button><span class="sidebar-caption">ひらめきを、自由につなごう。</span></div>
+    </aside>
+    <main class="workspace">
+      <header class="header">
+        <button class="icon-button menu-button" data-action="toggle-sidebar" aria-label="メニュー"><svg class="icon"><use href="#i-menu"/></svg></button>
+        <div class="map-heading"><h1>新しいアイデア</h1><span class="save-status" role="status" aria-live="polite" title="このブラウザに自動保存します"><svg class="icon"><use href="#i-check"/></svg><span id="save-status-text">保存中...</span></span></div>
+        <div class="header-actions"><button class="icon-button mobile-search-button" data-action="open-search" aria-label="ノードを検索"><svg class="icon"><use href="#i-search"/></svg></button><button class="icon-button history-button" data-action="undo" aria-label="元に戻す" disabled><svg class="icon"><use href="#i-undo"/></svg></button><button class="icon-button history-button" data-action="redo" aria-label="やり直す" disabled><svg class="icon"><use href="#i-redo"/></svg></button><span class="header-divider"></span><button class="share-button" data-action="share"><svg class="icon"><use href="#i-share"/></svg>共有</button><button class="icon-button more-button" data-action="more" aria-label="その他のメニュー"><svg class="icon"><use href="#i-more"/></svg></button></div>
+      </header>
+      <section id="mindmap-canvas" class="canvas" aria-label="新しいアイデアのマインドマップ">
+        <div class="canvas-caption"><span class="canvas-label">MIND MAP</span><span>アイデアを広げてみよう</span></div>
+        <div class="map-stage">
+          <div id="mindMapWorld" class="mind-map-world">
+          <svg class="connections" viewBox="0 0 800 500" preserveAspectRatio="none" fill="none" aria-hidden="true"></svg>
+          </div>
+        </div>
+        <div class="zoom-controls" role="group" aria-label="ズーム操作"><button class="icon-button" data-action="zoom-in" aria-label="拡大"><svg class="icon"><use href="#i-plus"/></svg></button><span class="zoom-value">100%</span><button class="icon-button" data-action="zoom-out" aria-label="縮小"><svg class="icon"><path d="M5 12h14"/></svg></button><span class="zoom-divider"></span><button class="icon-button" data-action="fit-view" aria-label="全体表示"><svg class="icon"><use href="#i-fit"/></svg></button></div>
+        <div class="bottom-toolbar" role="toolbar" aria-label="マインドマップツール">
+          <button class="tool-button primary-tool" data-action="add-node"><svg class="icon"><use href="#i-plus"/></svg><span>ノード追加</span></button>
+          <button class="tool-button edit-tool" data-action="edit-node" disabled><svg class="icon"><use href="#i-edit"/></svg><span>編集</span></button>
+          <button class="tool-button subtopic-tool" data-action="add-subtopic"><svg class="icon"><use href="#i-branch"/></svg><span>サブトピック</span></button><span class="toolbar-divider"></span>
+          <button class="tool-button style-tool" data-action="style" aria-haspopup="dialog" disabled><svg class="icon"><use href="#i-style"/></svg><span>色</span></button><button class="tool-button icon-tool" data-action="icon"><svg class="icon"><use href="#i-smile"/></svg><span>アイコン</span></button><button class="tool-button note-tool" data-action="note"><svg class="icon"><use href="#i-note"/></svg><span>メモ</span></button><button class="tool-button delete-tool" data-action="delete-node" disabled><svg class="icon"><use href="#i-trash"/></svg><span>削除</span></button><button class="tool-button layout-tool" data-action="auto-layout" title="現在のマップを自動整理"><svg class="icon"><use href="#i-fit"/></svg><span>自動整理</span></button>
+        </div>
+        <button id="quick-add" class="quick-add" data-action="quick-add" aria-label="ノードを追加"><svg class="icon"><use href="#i-plus"/></svg></button>
+      </section>
+    </main>
+  </div>
+  <dialog id="node-editor" class="node-editor" aria-labelledby="editor-title">
+    <form id="node-form" novalidate>
+      <h2 id="editor-title">ノードを追加</h2>
+      <p id="editor-description" class="editor-description"></p>
+      <label for="node-name">ノード名</label>
+      <input id="node-name" name="text" autocomplete="off" maxlength="100" aria-describedby="editor-error" required>
+      <p id="editor-error" class="editor-error" aria-live="polite"></p>
+      <div class="editor-actions">
+        <button type="button" data-action="cancel-edit">キャンセル</button>
+        <button type="submit" class="editor-submit">追加</button>
+      </div>
+    </form>
+  </dialog>
+  <dialog id="delete-dialog" class="node-editor" aria-labelledby="delete-title" aria-describedby="delete-description">
+    <h2 id="delete-title">ノードを削除しますか？</h2>
+    <p id="delete-description" class="editor-description"></p>
+    <div class="editor-actions">
+      <button type="button" data-action="cancel-delete" autofocus>キャンセル</button>
+      <button type="button" class="delete-confirm" data-action="confirm-delete">削除</button>
+    </div>
+  </dialog>
+  <div id="node-notice" class="node-notice" role="status" hidden></div>
+  <div id="color-palette" class="color-palette" role="dialog" aria-label="ノードの色" hidden>
+    <div class="color-palette-heading"><strong>ノードの色</strong><button type="button" data-action="close-colors" aria-label="カラーパレットを閉じる">×</button></div>
+    <div id="color-options" class="color-options" role="group" aria-label="色を選択"></div>
+  </div>
+  <section id="mobile-search" class="mobile-search-panel" aria-label="ノード検索" hidden>
+    <div class="mobile-search-bar"><button class="icon-button" data-action="close-search" aria-label="検索を閉じる">×</button><div class="search-field"><svg class="icon"><use href="#i-search"/></svg><input id="mobile-node-search" type="search" aria-label="このマップ内を検索" aria-controls="mobile-search-results" placeholder="このマップ内を検索" autocomplete="off"></div></div>
+    <div id="mobile-search-results" class="search-results mobile-search-results" role="listbox" aria-label="ノード検索結果" hidden></div>
+  </section>
+  <button id="drawer-overlay" class="drawer-overlay" aria-label="マップ一覧を閉じる" hidden></button>
+  <div id="map-menu" class="map-menu" role="menu" hidden>
+    <button role="menuitem" data-map-action="favorite">お気に入りに追加</button>
+    <button role="menuitem" data-map-action="rename">名前を変更</button>
+    <button role="menuitem" data-map-action="duplicate">複製</button>
+    <button role="menuitem" data-map-action="delete">ゴミ箱へ移動</button>
+  </div>
+  <div id="trash-view" class="trash-view" hidden>
+    <button class="trash-view-backdrop" data-action="close-trash" aria-label="ゴミ箱を閉じる"></button>
+    <section class="trash-panel" role="dialog" aria-modal="true" aria-labelledby="trash-title">
+      <div class="trash-header"><div><h2 id="trash-title">ゴミ箱</h2><p>復元するまでマップの内容は保持されます。</p></div><button class="icon-button" data-action="close-trash" aria-label="ゴミ箱を閉じる">×</button></div>
+      <div id="trash-list" class="trash-list"></div>
+      <div class="trash-footer"><button class="empty-trash" data-action="empty-trash">ゴミ箱を空にする</button></div>
+    </section>
+  </div>
+  <div id="backup-menu" class="map-menu backup-menu" role="menu" aria-label="バックアップ" hidden>
+    <p>バックアップ</p>
+    <button role="menuitem" data-backup-action="export">JSONを書き出す</button>
+    <button role="menuitem" data-backup-action="import">JSONを読み込む</button>
+    <div class="menu-separator" aria-hidden="true"></div>
+    <p>エクスポート</p>
+    <button role="menuitem" data-export-action="png">PNGとして保存</button>
+    <button role="menuitem" data-export-action="pdf">PDFとして保存</button>
+  </div>
+  <input id="backup-file" class="visually-hidden" type="file" accept="application/json,.json" tabindex="-1" hidden>
+  <dialog id="map-dialog" class="node-editor" aria-labelledby="map-dialog-title">
+    <form id="map-form" novalidate>
+      <h2 id="map-dialog-title">新しいマップ</h2>
+      <p id="map-dialog-description" class="editor-description"></p>
+      <div id="map-name-field"><label for="map-name">マップ名</label><input id="map-name" maxlength="100" autocomplete="off" aria-describedby="map-error"></div>
+      <p id="map-error" class="editor-error" aria-live="polite"></p>
+      <div class="editor-actions"><button type="button" data-action="cancel-map">キャンセル</button><button id="map-submit" type="submit" class="editor-submit">作成</button></div>
+    </form>
+  </dialog>
+  <dialog id="import-dialog" class="node-editor" aria-labelledby="import-title" aria-describedby="import-description">
+    <h2 id="import-title">バックアップを復元しますか？</h2>
+    <p id="import-description" class="editor-description"></p>
+    <div class="editor-actions"><button type="button" data-action="cancel-import" autofocus>キャンセル</button><button type="button" class="editor-submit" data-action="confirm-import">復元する</button></div>
+  </dialog>
+</body>
+</html>

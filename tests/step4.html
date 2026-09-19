@@ -1,0 +1,38 @@
+<!doctype html><html lang="ja"><meta charset="utf-8"><title>STEP4 regression tests</title>
+<style>body{font:14px system-ui}iframe{width:1200px;height:800px;border:1px solid #ddd}li{padding:4px}.fail{color:#b00020}</style>
+<h1>STEP4 regression tests</h1><p>自動テスト用。合成Pointer Eventsで座標と状態遷移を検証します（実機の入力認識・pointer capture自体は別途手動確認）。</p><ol id="results"></ol><iframe></iframe>
+<script>
+const frame = document.querySelector('iframe');
+// Keep regression fixtures out of the user's actual browser storage.
+window.testStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} };
+frame.onload = async () => {
+ const w=frame.contentWindow,d=w.document;
+ await new Promise(r=>setTimeout(r,100));
+ const q=s=>d.querySelector(s), root=()=>q('[data-node-id="root"]'), canvas=q('.canvas');
+ const box=e=>{const r=e.getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2,width:r.width,height:r.height}};
+ const scale=()=>Number(q('.zoom-value').textContent.replace('%',''));
+ const assert=(ok,msg)=>{if(!ok)throw Error(msg)};
+ const near=(a,b)=>Math.abs(a-b)<1;
+ const pause=()=>new Promise(r=>setTimeout(r,20));
+ const pointer=(target,type,id,x,y,touch=false)=>target.dispatchEvent(new w.PointerEvent(type,{bubbles:true,cancelable:true,pointerId:id,clientX:x,clientY:y,button:0,buttons:type==='pointerup'?0:1,pointerType:touch?'touch':'mouse',isPrimary:id===1}));
+ // Synthetic pointers have no native active pointer ID. Stub only capture calls.
+ w.Element.prototype.setPointerCapture=function(){};
+ const click=s=>{const e=typeof s==='string'?q(s):s,b=box(e);pointer(e,'pointerdown',1,b.x,b.y);pointer(e,'pointerup',1,b.x,b.y);e.dispatchEvent(new w.MouseEvent('click',{bubbles:true,detail:1}));};
+ const test=async(name,fn)=>{const li=document.createElement('li');try{await fn();li.textContent='PASS '+name}catch(e){li.textContent='FAIL '+name+': '+e.message;li.className='fail'}document.querySelector('#results').append(li)};
+ await test('initial root, connections, selection',()=>{assert(root(),'missing root');assert(d.querySelectorAll('.connections path').length===5,'lines');click(root());assert(root().getAttribute('aria-pressed')==='true','select')});
+ await test('pan moves world only and does not clear selection',()=>{const b=box(root());pointer(canvas,'pointerdown',1,300,130);pointer(canvas,'pointermove',1,360,170);const a=box(root());assert(near(a.x-b.x,60)&&near(a.y-b.y,40),'pan delta');pointer(canvas,'pointerup',1,360,170);canvas.dispatchEvent(new w.MouseEvent('click',{bubbles:true,detail:1}));assert(root().getAttribute('aria-pressed')==='true','selection lost')});
+ await test('zoom buttons after pan and 40–250% limits',()=>{click('[data-action="zoom-in"]');assert(scale()===110,'zoom blocked after pan');for(let i=0;i<25;i++)click('[data-action="zoom-in"]');assert(scale()===250,'max');for(let i=0;i<40;i++)click('[data-action="zoom-out"]');assert(scale()===40,'min')});
+ await test('cursor anchored wheel zoom and UI exclusion',()=>{const e=root(),b=box(e);e.dispatchEvent(new w.WheelEvent('wheel',{bubbles:true,cancelable:true,deltaY:-80,clientX:b.x,clientY:b.y}));const a=box(e);assert(near(a.x,b.x)&&near(a.y,b.y),'anchor drift');const v=scale();q('.zoom-controls').dispatchEvent(new w.WheelEvent('wheel',{bubbles:true,cancelable:true,deltaY:80}));assert(v===scale(),'UI wheel changed zoom')});
+ await test('node drag exact screen delta at high zoom, real-time lines',()=>{for(let i=0;i<20;i++)click('[data-action="zoom-in"]');const e=q('[data-node-id="work"]'),b=box(e),style=q('#mindMapWorld').style.transform,path=q('path[data-child-id="work"]').getAttribute('d');pointer(e,'pointerdown',1,b.x,b.y);pointer(e,'pointermove',1,b.x+40,b.y+30);const a=box(e);assert(near(a.x-b.x,40)&&near(a.y-b.y,30),'drag jump');assert(path!==q('path[data-child-id="work"]').getAttribute('d'),'line did not update before release');assert(style===q('#mindMapWorld').style.transform,'world moved');pointer(e,'pointerup',1,b.x+40,b.y+30);e.dispatchEvent(new w.MouseEvent('click',{bubbles:true,detail:1}));assert(!q('#node-editor').open,'drag opened editor')});
+ await test('tiny pointer movement is not node drag',()=>{const e=root(),b=box(e);pointer(e,'pointerdown',1,b.x,b.y);pointer(e,'pointermove',1,b.x+2,b.y+1);pointer(e,'pointerup',1,b.x+2,b.y+1);assert(near(box(e).x,b.x),'tiny movement moved node')});
+ await test('pinch interrupts node drag, pans midpoint, ignores remaining finger',()=>{click('[data-action="fit-view"]');const e=root(),b=box(e),styles=[...d.querySelectorAll('.node')].map(e=>e.style.cssText);pointer(e,'pointerdown',1,b.x-20,b.y,true);pointer(canvas,'pointerdown',2,b.x+20,b.y,true);pointer(canvas,'pointermove',2,b.x+60,b.y+20,true);assert(q('#mindMapWorld').style.transform.includes('scale('),'transform absent');assert([...d.querySelectorAll('.node')].every((e,i)=>e.style.cssText===styles[i]),'pinch moved node data');pointer(canvas,'pointerup',2,b.x+60,b.y+20,true);const transform=q('#mindMapWorld').style.transform;pointer(e,'pointermove',1,b.x+100,b.y,true);assert(q('#mindMapWorld').style.transform===transform,'remaining finger moved map');pointer(e,'pointerup',1,b.x+100,b.y,true);e.dispatchEvent(new w.MouseEvent('click',{bubbles:true,detail:1}));assert(!q('#node-editor').open,'pinch opened editor')});
+ await test('add/edit/empty prevention/delete after pan and zoom',async()=>{click(root());click('#quick-add');q('#node-name').value='  ';q('#node-form').dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));assert(q('#node-editor').open,'empty accepted');q('#node-name').value='STEP4 test';q('#node-form').dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));await pause();const e=q('[data-node-id="node-1"]');assert(e&&e.dataset.parentId==='root','child missing');e.dispatchEvent(new w.KeyboardEvent('keydown',{key:'F2',bubbles:true}));q('#node-name').value='renamed';q('#node-form').dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));await pause();assert(q('[data-node-id="node-1"]').textContent==='renamed','edit failed');click('[data-action="delete-node"]');click('[data-action="confirm-delete"]');await pause();assert(!q('[data-node-id="node-1"]'),'delete failed')});
+ await test('fit includes node sizes and root centering is callable',()=>{click('[data-action="fit-view"]');const area=w.viewArea();for(const e of d.querySelectorAll('.node')){const r=e.getBoundingClientRect();assert(r.left>=area.left-1&&r.right<=area.right+1&&r.top>=area.top-1&&r.bottom<=area.bottom+1,'node outside fit')}w.centerOnRoot();const b=box(root());assert(near(b.x,(area.left+area.right)/2)&&near(b.y,(area.top+area.bottom)/2),'center root')});
+ await test('320px mobile fit and pinch from node',async()=>{frame.style.width='320px';frame.style.height='568px';await new Promise(r=>setTimeout(r,100));click('[data-action="fit-view"]');assert(d.documentElement.scrollWidth===320,'overflow');const b=box(root()),old=scale();pointer(root(),'pointerdown',1,b.x-20,b.y,true);pointer(canvas,'pointerdown',2,b.x+20,b.y,true);pointer(canvas,'pointermove',2,b.x+80,b.y,true);assert(scale()>old,'no pinch zoom');pointer(canvas,'pointerup',2,b.x+80,b.y,true);pointer(root(),'pointerup',1,b.x-20,b.y,true)});
+ document.body.dataset.done='true';
+};
+fetch('../index.html', {cache:'no-store'}).then(r=>r.text()).then(html=>{
+ const boot = '<base href="'+new URL('../',location.href).href+'"><script>Object.defineProperty(window,"localStorage",{value:parent.testStorage});<\/script>';
+ frame.srcdoc = html.replace('<head>','<head>'+boot);
+});
+</script></html>

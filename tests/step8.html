@@ -1,0 +1,36 @@
+<!doctype html><html lang="ja"><meta charset="utf-8"><title>STEP8 search tests</title>
+<style>body{font:14px system-ui}iframe{width:1200px;height:800px;border:1px solid #ddd}li{padding:4px}.fail{color:#b00020}</style>
+<h1>STEP8 search tests</h1><p>16ノードの独立Storageモックで検索を検証します。</p><ol id="results"></ol><iframe></iframe>
+<script>
+(async()=>{
+const key='simple-mind-map-data',memory=new Map();let writes=0;
+const now=Date.now(),root={id:'root-a',text:'新しいアイデア',parentId:null,x:400,y:270,color:'blue',createdAt:now,updatedAt:now};
+const names=['AIツール','aiニュース','生成AI','仕事','仕事効率化','旅行','旅行計画','勉強','英語学習','副業','新サービス','顧客調査','設計','実装','テスト'];
+const nodes=[root,...names.map((text,i)=>({id:'n'+i,text,parentId:i<5?'root-a':'n'+(i%5),x:80+(i%5)*155,y:70+Math.floor(i/5)*130,color:['blue','green','orange','purple','cyan'][i%5],createdAt:now,updatedAt:now}))];
+const maps=[{id:'map-a',title:'検索テスト',nodes,viewport:{x:91,y:-42,scale:.55},createdAt:now,updatedAt:now},{id:'map-b',title:'別マップ',nodes:[{...root,id:'root-b',text:'別のルート'}],viewport:{x:0,y:0,scale:1},createdAt:now,updatedAt:now}];
+memory.set(key,JSON.stringify({version:2,maps,activeMapId:'map-a',updatedAt:now}));
+window.testStorage={getItem:k=>memory.get(k)??null,setItem(k,v){writes++;memory.set(k,v)},removeItem:k=>memory.delete(k)};
+const frame=document.querySelector('iframe'),html=await(await fetch('../index.html',{cache:'no-store'})).text();
+const boot='<base href="'+new URL('../',location.href).href+'"><script>Object.defineProperty(window,"localStorage",{value:parent.testStorage});<\/script>';
+await new Promise(resolve=>{frame.onload=resolve;frame.srcdoc=html.replace('<head>','<head>'+boot)});
+const w=frame.contentWindow,d=w.document,q=s=>d.querySelector(s),pause=(ms=50)=>new Promise(r=>setTimeout(r,ms));
+await pause(); const startWrites=writes;
+const input=q('#node-search'),results=()=>[...d.querySelectorAll('#desktop-search-results .search-result')];
+const search=value=>{input.value=value;input.dispatchEvent(new w.Event('input',{bubbles:true}))};
+const assert=(v,m)=>{if(!v)throw Error(m)};
+async function test(name,fn){const li=document.createElement('li');try{await fn();li.textContent='PASS '+name}catch(e){li.textContent='FAIL '+name+': '+e.message;li.className='fail'}q('#node-search')?.focus();document.querySelector('#results').append(li)}
+await test('16 nodes loaded',()=>assert(d.querySelectorAll('.node').length===16,'node count'));
+await test('case-insensitive partial search and count',()=>{search('AI');assert(results().length===3,'AI results');assert(q('.search-summary').textContent==='3件見つかりました','count')});
+await test('Japanese partial match and safe highlight',()=>{search('旅行');assert(results().length===2,'Japanese');assert(q('.search-result mark').textContent==='旅行','mark')});
+await test('zero-result message',()=>{search('存在しない');assert(q('.search-empty').textContent.includes('ありません'),'empty')});
+await test('result selects, centers and pulses at low zoom',()=>{search('新サービス');results()[0].click();const target=q('.node[data-node-id="n10"]');assert(target.classList.contains('is-selected'),'selection');assert(target.classList.contains('is-search-target'),'pulse');assert(q('.zoom-value').textContent==='80%','low zoom')});
+await test('search does not write localStorage',async()=>{search('仕事');await pause(450);assert(writes===startWrites,'storage write')});
+await test('Cmd/Ctrl+F is captured',()=>{input.blur();const e=new w.KeyboardEvent('keydown',{key:'f',metaKey:true,bubbles:true,cancelable:true});d.dispatchEvent(e);assert(e.defaultPrevented&&d.activeElement===input,'shortcut')});
+await test('Arrow and Enter choose result',()=>{search('旅行');input.dispatchEvent(new w.KeyboardEvent('keydown',{key:'ArrowDown',bubbles:true,cancelable:true}));input.dispatchEvent(new w.KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true}));assert(q('.node[data-node-id="n6"]').getAttribute('aria-pressed')==='true','keyboard select')});
+await test('Escape clears and closes',()=>{search('AI');input.dispatchEvent(new w.KeyboardEvent('keydown',{key:'Escape',bubbles:true,cancelable:true}));assert(!input.value&&q('#desktop-search-results').hidden,'escape')});
+await test('edit, add, delete and Undo refresh results',()=>{search('顧客');q('.node[data-node-id="n11"]').dispatchEvent(new w.KeyboardEvent('keydown',{key:'F2',bubbles:true}));q('#node-name').value='変更済み';q('#node-form').dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));assert(results().length===0,'edit refresh');q('[data-action="undo"]').click();assert(results().length===1,'undo refresh');search('検索追加');q('#quick-add').click();q('#node-name').value='検索追加';q('#node-form').dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));assert(results().length===1,'add refresh');q('[data-action="delete-node"]').click();q('[data-action="confirm-delete"]').click();assert(results().length===0,'delete refresh');q('[data-action="undo"]').click();assert(results().length===1,'delete undo refresh')});
+await test('map switch resets search',()=>{search('仕事');q('[data-map-id="map-b"]').click();assert(!input.value&&q('#desktop-search-results').hidden&&d.querySelectorAll('.node').length===1,'map reset')});
+await test('mobile panel opens and result tap closes it',async()=>{q('[data-map-id="map-a"]').click();frame.style.width='390px';await pause(100);q('[data-action="open-search"]').click();const mobile=q('#mobile-node-search');mobile.value='勉強';mobile.dispatchEvent(new w.Event('input',{bubbles:true}));q('#mobile-search-results .search-result').click();assert(q('#mobile-search').hidden&&q('[data-node-id="n7"]').getAttribute('aria-pressed')==='true','mobile')});
+document.body.dataset.done='true';
+})();
+</script></html>
