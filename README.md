@@ -4,6 +4,8 @@ Simple Mind Mapは、考えや情報をすばやく整理するための個人�
 
 データは利用中のブラウザ内へ保存されます。複数マップの管理、検索、バックアップ、画像・PDF出力、スマホ操作、PWAによる基本的なオフライン利用に対応しています。
 
+**公開URL：** [https://kanto879.github.io/simple-mind-map/](https://kanto879.github.io/simple-mind-map/)
+
 ## 主な機能
 
 - 複数マインドマップの作成、切り替え、名前変更、複製
@@ -103,13 +105,13 @@ http://localhost:8000/
 
 ## GitHub Pages
 
-CSS、JavaScript、Manifest、Service Worker、アイコンは相対パスまたはService Workerのscopeを基準に読み込むため、次のようなGitHub PagesのプロジェクトURLでも動作できる構成です。
+このアプリはGitHub Pagesで公開しています。
 
 ```text
-https://username.github.io/simple-mind-map/
+https://kanto879.github.io/simple-mind-map/
 ```
 
-このリポジトリは公開前の準備までを行っており、GitHub Pagesへの公開設定自体は次の作業で行います。
+CSS、JavaScript、Manifest、Service Worker、アイコンは相対パスまたはService Workerのscopeを基準に読み込むため、`simple-mind-map/`配下でも正常に動作します。`main`ブランチの`/ (root)`から公開しており、以後は変更をcommitしてpushするとGitHub Pagesへ反映されます。
 
 ## テスト
 
