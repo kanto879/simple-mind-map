@@ -53,6 +53,8 @@ const pointers = new Map();
 let panState = null;
 let pinchState = null;
 const connections = document.querySelector('.connections');
+const nodeElements = new Map();
+const connectionPaths = new Map();
 const editor = document.querySelector('#node-editor');
 const form = document.querySelector('#node-form');
 const nameInput = document.querySelector('#node-name');
@@ -322,7 +324,7 @@ document.addEventListener('keydown', event => {
 });
 
 function nodeElement(id) {
-  return [...stage.querySelectorAll('.node')].find(element => element.dataset.nodeId === id);
+  return nodeElements.get(id) ?? null;
 }
 
 function selectNode(id) {
@@ -331,7 +333,7 @@ function selectNode(id) {
   editButton.disabled = selectedNodeId === null;
   styleButton.disabled = selectedNodeId === null;
   if (selectedNodeId === null) closeColorPalette();
-  stage.querySelectorAll('.node').forEach(element => {
+  nodeElements.forEach(element => {
     const selected = element.dataset.nodeId === selectedNodeId;
     element.classList.toggle('is-selected', selected);
     element.setAttribute('aria-pressed', String(selected));
@@ -411,7 +413,9 @@ document.addEventListener('keydown',event=>{
 },true);
 
 function renderNodes() {
-  stage.querySelectorAll('.node').forEach(element => element.remove());
+  nodeElements.forEach(element => element.remove());
+  nodeElements.clear();
+  const fragment = document.createDocumentFragment();
   for (const node of nodes) {
     const element = document.createElement('button');
     element.type = 'button';
@@ -433,8 +437,10 @@ function renderNodes() {
     label.className = 'node-label';
     label.textContent = node.text;
     element.append(label);
-    world.append(element);
+    nodeElements.set(node.id,element);
+    fragment.append(element);
   }
+  world.append(fragment);
   layoutNodes();
   selectNode(selectedNodeId);
   refreshSearch();
@@ -581,7 +587,10 @@ function layoutNodes() {
 }
 
 function renderConnections(movedId = null) {
-  if (movedId === null) connections.replaceChildren();
+  if (movedId === null) {
+    connections.replaceChildren();
+    connectionPaths.clear();
+  }
   const origin = world.getBoundingClientRect();
   const rectFor = id => {
     const rect = nodeElement(id).getBoundingClientRect();
@@ -597,14 +606,17 @@ function renderConnections(movedId = null) {
     const curve = connectionCurve(parent,child);
     const pathData = `M${curve.start.x} ${curve.start.y} C${curve.control1.x} ${curve.control1.y} ${curve.control2.x} ${curve.control2.y} ${curve.end.x} ${curve.end.y}`;
     const path = movedId === null ? document.createElementNS(svgNS, 'path')
-      : [...connections.children].find(path => path.dataset.childId === node.id);
+      : connectionPaths.get(node.id);
     if (!path) continue;
     path.setAttribute('d', pathData);
     path.setAttribute('stroke', themes[node.color].stroke);
     path.setAttribute('vector-effect', 'non-scaling-stroke');
     path.dataset.parentId = node.parentId;
     path.dataset.childId = node.id;
-    if (movedId === null) connections.append(path);
+    if (movedId === null) {
+      connectionPaths.set(node.id,path);
+      connections.append(path);
+    }
   }
 }
 
@@ -1192,9 +1204,10 @@ function switchMap(id) {
   if (!maps.some(map => map.id === id && map.deletedAt===null) || editor.open || deleteDialog.open || mapDialog.open || importDialog.open) return;
   cancelGestures();
   if (dirty) saveAppData(); // Failure keeps every map in memory; next save retries all.
-  if (activeMapId !== id) activateMap(id);
+  const changed = activeMapId !== id;
+  if (changed) activateMap(id);
   closeDrawer();
-  scheduleSave();
+  if (changed) scheduleSave();
 }
 function renderMapList() {
   const list = document.querySelector('.map-list');
