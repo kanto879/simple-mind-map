@@ -66,10 +66,14 @@ let nextId = 1;
 const deleteButton = document.querySelector('[data-action="delete-node"]');
 const editButton = document.querySelector('[data-action="edit-node"]');
 const styleButton = document.querySelector('[data-action="style"]');
+const noteButton = document.querySelector('[data-action="note"]');
 const colorPalette = document.querySelector('#color-palette');
 const colorOptions = document.querySelector('#color-options');
 const deleteDialog = document.querySelector('#delete-dialog');
 const importDialog = document.querySelector('#import-dialog');
+const noteDialog = document.querySelector('#note-dialog');
+const noteForm = document.querySelector('#note-form');
+const noteInput = document.querySelector('#node-note');
 const notice = document.querySelector('#node-notice');
 let pendingDeleteId = null;
 let noticeTimer;
@@ -112,6 +116,7 @@ function validateMapData(data, rootId = 'root') {
       createdAt: Number.isFinite(node.createdAt) && node.createdAt >= 0 ? node.createdAt : now,
       updatedAt: Number.isFinite(node.updatedAt) && node.updatedAt >= 0 ? node.updatedAt : now,
       moved: node.moved === true, added: node.added === true };
+    if (typeof node.note === 'string' && node.note.trim()) valid.note = node.note.trim().slice(0,2000);
     if (['study','travel'].includes(node.layoutKey)) valid.layoutKey = node.layoutKey;
     if (['work','book','plane','chart','robot'].includes(node.icon)) valid.icon = node.icon;
     ids.set(valid.id, valid);
@@ -295,7 +300,7 @@ function restoreHistorySnapshot(snapshot) {
   scheduleSave();
 }
 function traverseHistory(source, destination) {
-  if (!source.length || pointers.size || editor.open || deleteDialog.open || mapDialog.open || importDialog.open) return;
+  if (!source.length || pointers.size || editor.open || deleteDialog.open || mapDialog.open || importDialog.open || noteDialog.open) return;
   const current = createHistorySnapshot();
   try {
     restoreHistorySnapshot(source[source.length - 1]);
@@ -315,7 +320,7 @@ redoButton.addEventListener('click', redo);
 document.addEventListener('keydown', event => {
   if (!(event.ctrlKey || event.metaKey) || event.altKey || event.isComposing
     || event.target.isContentEditable || event.target.closest('input,textarea,select')
-    || editor.open || deleteDialog.open || mapDialog.open || importDialog.open || pointers.size) return;
+    || editor.open || deleteDialog.open || mapDialog.open || importDialog.open || noteDialog.open || pointers.size) return;
   const key = event.key.toLowerCase();
   if (key !== 'z' && !(key === 'y' && event.ctrlKey && !event.shiftKey)) return;
   event.preventDefault();
@@ -332,6 +337,7 @@ function selectNode(id) {
   deleteButton.disabled = selectedNodeId === null;
   editButton.disabled = selectedNodeId === null;
   styleButton.disabled = selectedNodeId === null;
+  noteButton.disabled = selectedNodeId === null;
   if (selectedNodeId === null) closeColorPalette();
   nodeElements.forEach(element => {
     const selected = element.dataset.nodeId === selectedNodeId;
@@ -354,7 +360,7 @@ function closeColorPalette() {
   styleButton.setAttribute('aria-expanded','false');
 }
 function toggleColorPalette() {
-  if (styleButton.disabled || editor.open || deleteDialog.open || mapDialog.open || importDialog.open || pointers.size) return;
+  if (styleButton.disabled || editor.open || deleteDialog.open || mapDialog.open || importDialog.open || noteDialog.open || pointers.size) return;
   mapMenu.hidden = true;
   backupMenu.hidden = true;
   colorPalette.hidden = !colorPalette.hidden;
@@ -437,6 +443,13 @@ function renderNodes() {
     label.className = 'node-label';
     label.textContent = node.text;
     element.append(label);
+    if (node.note) {
+      const indicator = document.createElement('span');
+      indicator.className = 'node-note-indicator';
+      indicator.setAttribute('aria-hidden','true');
+      element.append(indicator);
+      element.title += '・メモあり';
+    }
     nodeElements.set(node.id,element);
     fragment.append(element);
   }
@@ -557,7 +570,7 @@ function calculateAutoLayout(targetNodes = nodes) {
 }
 
 function autoLayoutCurrentMap() {
-  if (pointers.size || editor.open || deleteDialog.open || mapDialog.open || importDialog.open) return false;
+  if (pointers.size || editor.open || deleteDialog.open || mapDialog.open || importDialog.open || noteDialog.open) return false;
   const map = getActiveMap();
   if (!map || map.nodes !== nodes) return false;
   const positions = calculateAutoLayout(map.nodes);
@@ -637,7 +650,7 @@ function connectionCurve(parent,child) {
 }
 
 function openEditor(mode, id = selectedNodeId ?? ROOT_ID) {
-  if (editor.open || deleteDialog.open || mapDialog.open || importDialog.open || dragState?.dragging || pinchState) return;
+  if (editor.open || deleteDialog.open || mapDialog.open || importDialog.open || noteDialog.open || dragState?.dragging || pinchState) return;
   const node = nodes.find(item => item.id === id);
   editorState = { mode, id };
   document.querySelector('#editor-title').textContent = mode === 'add' ? '子ノードを追加' : 'ノード名を編集';
@@ -736,6 +749,43 @@ editButton.addEventListener('click',()=>{
   if (selectedNodeId !== null) openEditor('edit',selectedNodeId);
 });
 
+function openNoteEditor() {
+  if (selectedNodeId === null || editor.open || deleteDialog.open || mapDialog.open || importDialog.open
+    || noteDialog.open || pointers.size) return;
+  const node = nodes.find(item=>item.id===selectedNodeId);
+  if (!node) return;
+  document.querySelector('#note-description').textContent = `「${node.text}」に保存します`;
+  noteDialog.dataset.nodeId = node.id;
+  noteInput.value = node.note || '';
+  noteDialog.showModal();
+  noteInput.focus();
+  noteInput.setSelectionRange(noteInput.value.length,noteInput.value.length);
+}
+
+noteButton.addEventListener('click',openNoteEditor);
+document.querySelector('[data-action="cancel-note"]').addEventListener('click',()=>noteDialog.close());
+noteForm.addEventListener('submit',event=>{
+  event.preventDefault();
+  if (event.isComposing) return;
+  const id = noteDialog.dataset.nodeId;
+  const node = nodes.find(item=>item.id===id);
+  if (!node) { noteDialog.close(); return; }
+  const note = noteInput.value.trim();
+  if ((node.note || '') === note) { noteDialog.close(); return; }
+  pushHistory();
+  if (note) node.note = note; else delete node.note;
+  node.updatedAt = Date.now();
+  renderNodes();
+  selectNode(id);
+  noteDialog.close();
+  nodeElement(id)?.focus({preventScroll:true});
+  scheduleSave();
+});
+noteDialog.addEventListener('close',()=>{
+  noteDialog.removeAttribute('data-node-id');
+  noteInput.value = '';
+});
+
 // Deletion is only committed by the confirmation button. Capture its target id
 // so keyboard focus changes cannot change which subtree is being removed.
 function notify(message) {
@@ -761,7 +811,7 @@ function descendantIds(id) {
 }
 
 function requestDelete() {
-  if (selectedNodeId === null || editor.open || deleteDialog.open || mapDialog.open || importDialog.open || pointers.size) return;
+  if (selectedNodeId === null || editor.open || deleteDialog.open || mapDialog.open || importDialog.open || noteDialog.open || pointers.size) return;
   if (selectedNodeId === ROOT_ID) {
     notify('メインノードは削除できません');
     return;
@@ -796,7 +846,7 @@ document.querySelector('[data-action="confirm-delete"]').addEventListener('click
 });
 document.addEventListener('keydown', event => {
   if (!['Delete', 'Backspace'].includes(event.key) || event.isComposing || event.repeat
-    || event.ctrlKey || event.metaKey || event.altKey || editor.open || deleteDialog.open || mapDialog.open || importDialog.open
+    || event.ctrlKey || event.metaKey || event.altKey || editor.open || deleteDialog.open || mapDialog.open || importDialog.open || noteDialog.open
     || event.target.closest('input,textarea,select,[contenteditable]:not([contenteditable="false"])')) return;
   if (selectedNodeId !== null) {
     event.preventDefault();
@@ -833,7 +883,7 @@ function viewArea() {
 }
 
 function zoomAt(scale, x, y) {
-  if (pointers.size || editor.open || deleteDialog.open || mapDialog.open || importDialog.open) return;
+  if (pointers.size || editor.open || deleteDialog.open || mapDialog.open || importDialog.open || noteDialog.open) return;
   placeAnchor(clientToWorld(x,y),x,y,scale);
 }
 
@@ -883,7 +933,7 @@ document.querySelector('[data-action="fit-view"]').addEventListener('click',fitT
 document.querySelector('[data-action="auto-layout"]').addEventListener('click',autoLayoutCurrentMap);
 const isTool = target => !!target.closest('.bottom-toolbar,.zoom-controls,.quick-add,input,dialog');
 canvas.addEventListener('wheel',event=>{
-  if (isTool(event.target) || editor.open || deleteDialog.open || mapDialog.open || importDialog.open) return;
+  if (isTool(event.target) || editor.open || deleteDialog.open || mapDialog.open || importDialog.open || noteDialog.open) return;
   event.preventDefault();
   const delta = event.deltaY*(event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? canvas.clientHeight : 1);
   zoomAt(viewport.scale*Math.exp(-Math.max(-100,Math.min(100,delta))*0.002),event.clientX,event.clientY);
@@ -912,7 +962,7 @@ function startPinch() {
 }
 canvas.addEventListener('pointerdown',event=>{
   if (pointers.size === 0) suppressDragClick = false;
-  if (event.button !== 0 || isTool(event.target) || editor.open || deleteDialog.open || mapDialog.open || importDialog.open || pointers.size >= 2) return;
+  if (event.button !== 0 || isTool(event.target) || editor.open || deleteDialog.open || mapDialog.open || importDialog.open || noteDialog.open || pointers.size >= 2) return;
   clearTimeout(saveTimer);
   pointers.set(event.pointerId,{x:event.clientX,y:event.clientY});
   const element = event.target.closest('.node');
@@ -1105,7 +1155,7 @@ function chooseSearchResult(id) {
   nodeElement(id)?.focus({preventScroll:true});
 }
 function openSearch() {
-  if (editor.open || deleteDialog.open || mapDialog.open || importDialog.open) return;
+  if (editor.open || deleteDialog.open || mapDialog.open || importDialog.open || noteDialog.open) return;
   mapMenu.hidden = true;
   backupMenu.hidden = true;
   if (mobile.matches) {
@@ -1159,7 +1209,7 @@ document.querySelector('[data-action="close-search"]').addEventListener('click',
   document.querySelector('[data-action="open-search"]').focus();
 });
 document.addEventListener('keydown',event=>{
-  if (event.isComposing || editor.open || deleteDialog.open || mapDialog.open || importDialog.open) return;
+  if (event.isComposing || editor.open || deleteDialog.open || mapDialog.open || importDialog.open || noteDialog.open) return;
   if ((event.metaKey || event.ctrlKey) && !event.altKey && event.key.toLowerCase() === 'f') {
     event.preventDefault();
     openSearch();
@@ -1201,7 +1251,7 @@ function activateMap(id) {
   renderMapList();
 }
 function switchMap(id) {
-  if (!maps.some(map => map.id === id && map.deletedAt===null) || editor.open || deleteDialog.open || mapDialog.open || importDialog.open) return;
+  if (!maps.some(map => map.id === id && map.deletedAt===null) || editor.open || deleteDialog.open || mapDialog.open || importDialog.open || noteDialog.open) return;
   cancelGestures();
   if (dirty) saveAppData(); // Failure keeps every map in memory; next save retries all.
   const changed = activeMapId !== id;
@@ -1257,7 +1307,7 @@ function renderMapList() {
 function openMapDialog(action,id = null) {
   mapMenu.hidden = true;
   backupMenu.hidden = true;
-  if (editor.open || deleteDialog.open || mapDialog.open || importDialog.open) return;
+  if (editor.open || deleteDialog.open || mapDialog.open || importDialog.open || noteDialog.open) return;
   const map = maps.find(map=>map.id===id);
   if (!['create','empty-trash'].includes(action) && !map) return;
   if ((action === 'delete' && map.deletedAt!==null)
@@ -1413,7 +1463,7 @@ function renderTrashList() {
   badge.hidden = trashed.length===0;
 }
 function openTrashView() {
-  if (editor.open || deleteDialog.open || mapDialog.open || importDialog.open) return;
+  if (editor.open || deleteDialog.open || mapDialog.open || importDialog.open || noteDialog.open) return;
   closeDrawer();
   renderTrashList();
   trashView.hidden = false;
@@ -1831,7 +1881,7 @@ menuToggle.addEventListener('click',()=>{
 });
 drawerOverlay.addEventListener('click',()=>{closeDrawer();menuToggle.focus();});
 document.addEventListener('keydown',event=>{
-  if (event.key === 'Escape' && !mapDialog.open && !editor.open && !deleteDialog.open && !importDialog.open) {
+  if (event.key === 'Escape' && !mapDialog.open && !editor.open && !deleteDialog.open && !importDialog.open && !noteDialog.open) {
     if (!trashView.hidden) { closeTrashView(); document.querySelector('[data-action="trash"]').focus(); }
     else if (!backupMenu.hidden) backupMenu.hidden=true;
     else if (!mapMenu.hidden) mapMenu.hidden=true;

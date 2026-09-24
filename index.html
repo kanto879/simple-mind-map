@@ -11,8 +11,8 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
   <link rel="icon" type="image/png" href="./icons/icon-192.png">
-  <link rel="stylesheet" href="style.css?v=18">
-  <script src="script.js?v=18" defer></script>
+  <link rel="stylesheet" href="style.css?v=19">
+  <script src="script.js?v=19" defer></script>
 </head>
 <body>
   <svg class="icon-definitions" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
@@ -33,7 +33,6 @@
     <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
     <symbol id="i-branch" viewBox="0 0 24 24"><rect x="3" y="8" width="6" height="8" rx="2"/><path d="M9 12h5M14 5v14M14 5h6M14 19h6"/></symbol>
     <symbol id="i-style" viewBox="0 0 24 24"><path d="m15 3 6 6-9 9-6-6 9-9ZM6 12l-3 9 9-3M12 6l6 6"/></symbol>
-    <symbol id="i-smile" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 9h.01M16 9h.01M8 14c2 3 6 3 8 0"/></symbol>
     <symbol id="i-note" viewBox="0 0 24 24"><path d="M14 3H5v18h14V8l-5-5Zm0 0v5h5M8 12h8M8 16h5"/></symbol>
     <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16v4ZM13.5 6.5l4 4M12 20h8"/></symbol>
     <symbol id="i-fit" viewBox="0 0 24 24"><path d="M9 4H4v5M15 4h5v5M4 15v5h5M20 15v5h-5"/></symbol>
@@ -69,7 +68,7 @@
           <button class="tool-button primary-tool" data-action="add-node"><svg class="icon"><use href="#i-plus"/></svg><span>ノード追加</span></button>
           <button class="tool-button edit-tool" data-action="edit-node" disabled><svg class="icon"><use href="#i-edit"/></svg><span>編集</span></button>
           <button class="tool-button subtopic-tool" data-action="add-subtopic"><svg class="icon"><use href="#i-branch"/></svg><span>サブトピック</span></button><span class="toolbar-divider"></span>
-          <button class="tool-button style-tool" data-action="style" aria-haspopup="dialog" disabled><svg class="icon"><use href="#i-style"/></svg><span>色</span></button><button class="tool-button icon-tool" data-action="icon"><svg class="icon"><use href="#i-smile"/></svg><span>アイコン</span></button><button class="tool-button note-tool" data-action="note"><svg class="icon"><use href="#i-note"/></svg><span>メモ</span></button><button class="tool-button delete-tool" data-action="delete-node" disabled><svg class="icon"><use href="#i-trash"/></svg><span>削除</span></button><button class="tool-button layout-tool" data-action="auto-layout" title="現在のマップを自動整理"><svg class="icon"><use href="#i-fit"/></svg><span>自動整理</span></button>
+          <button class="tool-button style-tool" data-action="style" aria-haspopup="dialog" disabled><svg class="icon"><use href="#i-style"/></svg><span>色</span></button><button class="tool-button note-tool" data-action="note" disabled><svg class="icon"><use href="#i-note"/></svg><span>メモ</span></button><button class="tool-button delete-tool" data-action="delete-node" disabled><svg class="icon"><use href="#i-trash"/></svg><span>削除</span></button><button class="tool-button layout-tool" data-action="auto-layout" title="現在のマップを自動整理"><svg class="icon"><use href="#i-fit"/></svg><span>自動整理</span></button>
         </div>
         <button id="quick-add" class="quick-add" data-action="quick-add" aria-label="ノードを追加"><svg class="icon"><use href="#i-plus"/></svg></button>
       </section>
@@ -85,6 +84,19 @@
       <div class="editor-actions">
         <button type="button" data-action="cancel-edit">キャンセル</button>
         <button type="submit" class="editor-submit">追加</button>
+      </div>
+    </form>
+  </dialog>
+  <dialog id="note-dialog" class="node-editor note-editor" aria-labelledby="note-title">
+    <form id="note-form">
+      <h2 id="note-title">ノードのメモ</h2>
+      <p id="note-description" class="editor-description"></p>
+      <label for="node-note">メモ</label>
+      <textarea id="node-note" name="note" maxlength="2000" rows="7" placeholder="覚えておきたい内容を入力してください"></textarea>
+      <p class="note-help">空欄で保存するとメモを削除します。</p>
+      <div class="editor-actions">
+        <button type="button" data-action="cancel-note">キャンセル</button>
+        <button type="submit" class="editor-submit">保存</button>
       </div>
     </form>
   </dialog>

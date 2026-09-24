@@ -20,6 +20,10 @@
 .editor-description { margin: 0 0 22px; font-size: 12px; color: #8793a3; overflow-wrap: anywhere; }
 .node-editor label { display: block; margin-bottom: 8px; font-size: 12px; font-weight: 600; }
 .node-editor input { width: 100%; height: 46px; padding: 0 12px; border: 1px solid #d9e2ef; border-radius: 8px; font-size: 16px; color: inherit; background: #fff; }
+.node-editor textarea { width:100%; min-height:150px; resize:vertical; padding:12px; border:1px solid #d9e2ef; border-radius:10px; font:16px/1.65 system-ui,-apple-system,"Segoe UI","Noto Sans JP",sans-serif; color:inherit; background:#fff; }
+.node-editor textarea:focus { outline:3px solid #8bb7fa; outline-offset:2px; border-color:#9bbef3; }
+.note-help { margin:7px 0 16px; color:#98a2af; font-size:11px; }
+.node-note-indicator { position:absolute; top:7px; right:8px; width:7px; height:7px; border:2px solid #fff; border-radius:50%; background:currentColor; box-shadow:0 1px 3px #263f6520; }
 .node-editor input[aria-invalid="true"] { border-color: #cb6565; }
 .editor-error { min-height: 18px; margin: 8px 0 16px; font-size: 12px; color: #b75151; }
 .editor-actions { display: flex; justify-content: flex-end; gap: 8px; }
@@ -254,7 +258,7 @@
     padding:6px 4px;
     min-height:64px;
   }
-  .bottom-toolbar .subtopic-tool,.bottom-toolbar .icon-tool,.bottom-toolbar .note-tool,.bottom-toolbar .toolbar-divider { display:none; }
+  .bottom-toolbar .subtopic-tool,.bottom-toolbar .toolbar-divider { display:none; }
   .bottom-toolbar .edit-tool { display:flex; }
   .bottom-toolbar .tool-button { min-width:0; min-height:52px; height:52px; padding-inline:2px; gap:5px; font-size:11px; }
   .bottom-toolbar .tool-button .icon { width:19px; height:19px; }
@@ -304,7 +308,7 @@
     padding:22px 18px;
     scroll-padding-block:18px;
   }
-  .node-editor input,.mobile-search-bar input { font-size:16px; }
+  .node-editor input,.node-editor textarea,.mobile-search-bar input { font-size:16px; }
   .editor-actions button { min-width:88px; min-height:48px; font-size:14px; }
   .node-notice { top:calc(env(safe-area-inset-top,0px) + 66px); font-size:14px; }
 

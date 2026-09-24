@@ -1,0 +1,29 @@
+<!doctype html><html lang="ja"><meta charset="utf-8"><title>Memo feature tests</title>
+<style>body{font:14px system-ui}iframe{width:1200px;height:800px;border:1px solid #ddd}li{padding:4px}.fail{color:#b00020}</style>
+<h1>Memo feature tests</h1><p>アイコン項目の削除と、メモの保存・編集・履歴・スマホ表示を検証します。</p><ol id="results"></ol><iframe></iframe>
+<script>
+(async()=>{
+const key='simple-mind-map-data',memory=new Map(),now=Date.now();let writes=0;
+const node=(id,text,parentId,x,y,color='blue',note)=>({id,text,parentId,x,y,color,note,createdAt:now,updatedAt:now});
+const maps=[{id:'a',title:'仕事',nodes:[node('root','計画',null,400,270),node('work','営業','root',620,180,'green')],viewport:{x:0,y:0,scale:1},createdAt:now,updatedAt:now,isFavorite:false,deletedAt:null},{id:'b',title:'旅行',nodes:[node('root-b','旅行案',null,400,270,'orange','既存メモ')],viewport:{x:0,y:0,scale:1},createdAt:now,updatedAt:now,isFavorite:false,deletedAt:null}];
+memory.set(key,JSON.stringify({version:2,maps,activeMapId:'a',updatedAt:now}));window.testStorage={getItem:k=>memory.get(k)??null,setItem(k,v){writes++;memory.set(k,v)},removeItem:k=>memory.delete(k)};
+const frame=document.querySelector('iframe'),html=await(await fetch('../index.html',{cache:'no-store'})).text(),boot='<base href="'+new URL('../',location.href).href+'"><script>Object.defineProperty(window,"localStorage",{value:parent.testStorage});<\/script>';let w,d;
+await new Promise(resolve=>{frame.onload=resolve;frame.srcdoc=html.replace('<head>','<head>'+boot)});w=frame.contentWindow;d=w.document;await new Promise(r=>setTimeout(r,160));
+const q=s=>d.querySelector(s),all=s=>[...d.querySelectorAll(s)],pause=(ms=450)=>new Promise(r=>setTimeout(r,ms)),assert=(v,m)=>{if(!v)throw Error(m)};
+async function test(name,fn){const li=document.createElement('li');try{await fn();li.textContent='PASS '+name}catch(e){li.textContent='FAIL '+name+': '+e.message;li.className='fail'}document.querySelector('#results').append(li)}
+function selectWork(){q('[data-node-id="work"]').click()}
+function submitNote(value){q('#node-note').value=value;q('#note-form').dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}))}
+const savedNode=id=>JSON.parse(memory.get(key)).maps.find(map=>map.id==='a').nodes.find(node=>node.id===id);
+
+await test('unused icon feature and button frame are removed',()=>{assert(!q('[data-action="icon"]')&&!q('.icon-tool'),'icon control remains');assert(!all('.bottom-toolbar .tool-button').some(button=>button.textContent.trim()==='アイコン'),'icon label remains')});
+await test('memo requires a selected node',()=>{assert(q('[data-action="note"]').disabled,'enabled without selection');selectWork();assert(!q('[data-action="note"]').disabled,'disabled after selection')});
+await test('memo dialog opens for the selected node',()=>{q('[data-action="note"]').click();assert(q('#note-dialog').open,'dialog');assert(q('#note-description').textContent.includes('営業'),'description');assert(q('#node-note').value==='','initial note')});
+await test('memo saves safely and shows a marker',async()=>{submitNote('  顧客へ確認\n来週まで  ');await pause();const saved=savedNode('work');assert(saved.note==='顧客へ確認\n来週まで','saved memo');assert(q('[data-node-id="work"] .node-note-indicator'),'marker');assert(q('[data-node-id="work"]').title.includes('メモあり'),'title');assert(writes===1,'writes '+writes)});
+await test('JSON backup includes memo text',()=>{const backup=w.currentBackupData(),saved=backup.maps.find(map=>map.id==='a').nodes.find(node=>node.id==='work');assert(saved.note==='顧客へ確認\n来週まで','backup note')});
+await test('Undo and Redo restore memo content',()=>{q('[data-action="undo"]').click();assert(!w.getActiveMap().nodes.find(node=>node.id==='work').note,'undo');q('[data-action="redo"]').click();assert(w.getActiveMap().nodes.find(node=>node.id==='work').note.includes('顧客へ確認'),'redo')});
+await test('empty memo removes saved content and marker',async()=>{selectWork();q('[data-action="note"]').click();assert(q('#node-note').value.includes('顧客へ確認'),'edit value');submitNote('   ');await pause();assert(!savedNode('work').note,'not cleared');assert(!q('[data-node-id="work"] .node-note-indicator'),'marker remains')});
+await test('notes stay isolated between maps and survive validation',()=>{q('.map-item[data-map-id="b"]').click();const root=q('[data-node-id="root-b"]');assert(root.querySelector('.node-note-indicator'),'other note missing');root.click();q('[data-action="note"]').click();assert(q('#node-note').value==='既存メモ','other note changed');q('[data-action="cancel-note"]').click()});
+await test('memo is available as a mobile tap target',async()=>{frame.style.width='390px';frame.style.height='844px';await new Promise(r=>setTimeout(r,180));const button=q('[data-action="note"]'),rect=button.getBoundingClientRect();assert(getComputedStyle(button).display!=='none','hidden');assert(rect.height>=52&&rect.width>=44,'tap target');assert(!q('[data-action="icon"]'),'icon returned')});
+document.body.dataset.done='true';
+})();
+</script></html>
