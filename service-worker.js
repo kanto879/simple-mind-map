@@ -3,12 +3,12 @@
 // Change this version whenever the app shell changes. Activation removes only
 // older Simple Mind Map caches; localStorage and unrelated caches are untouched.
 const CACHE_PREFIX = 'simple-mind-map-';
-const CACHE_NAME = 'simple-mind-map-app-v19-1';
+const CACHE_NAME = 'simple-mind-map-app-v20-1';
 const REQUIRED_SHELL = [
   './',
   './index.html',
-  './style.css?v=19',
-  './script.js?v=19',
+  './style.css?v=20',
+  './script.js?v=20',
   './manifest.webmanifest',
 ];
 const OPTIONAL_SHELL = [

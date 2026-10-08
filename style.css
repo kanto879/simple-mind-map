@@ -8,8 +8,19 @@
 @media(max-width:768px) and (max-height:700px){.map-stage{top:35%}.zoom-controls{bottom:calc(106px + env(safe-area-inset-bottom,0px));right:88px;flex-direction:row}.zoom-divider{width:1px;height:22px;margin:0 2px}}
 
 /* STEP2: keep the existing canvas and category styles, add interaction states. */
-.node { padding: 0 10px; cursor: pointer; touch-action: manipulation; }
-.node-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.node { height:auto; padding:10px; cursor:pointer; touch-action:manipulation; }
+.main-node { width:max-content; min-width:21%; max-width:min(40%,320px); }
+.category-node { width:max-content; min-width:15%; max-width:min(32%,260px); }
+.node-label {
+  min-width:0;
+  max-width:100%;
+  overflow:visible;
+  white-space:normal;
+  overflow-wrap:anywhere;
+  word-break:break-word;
+  text-align:center;
+  line-height:1.45;
+}
 .node.is-selected { box-shadow: 0 0 0 1px currentColor, 0 0 0 5px #4386ed12, 0 4px 16px #4386ed18; }
 .connections { pointer-events: none; stroke-width: 1.8; }
 .map-heading h1 { overflow: hidden; text-overflow: ellipsis; }
@@ -31,7 +42,8 @@
 .editor-actions .editor-submit { color: #fff; background: var(--blue); }
 @media (max-width: 768px) {
   .node { min-height: 44px; padding-inline: 6px; }
-  .category-node { padding-inline: 2px; }
+  .main-node { min-width:37%; max-width:62%; }
+  .category-node { min-width:25%; max-width:48%; padding-inline:6px; }
   .map-heading { max-width: calc(100% - 120px); }
 }
 

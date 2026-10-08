@@ -1,0 +1,24 @@
+<!doctype html><html lang="ja"><meta charset="utf-8"><title>STEP20 long node label tests</title>
+<style>body{font:14px system-ui}iframe{width:1200px;height:800px;border:1px solid #ddd}li{padding:4px}.fail{color:#b00020}</style>
+<h1>STEP20 long node label tests</h1><p>長いノード名の全文表示、折り返し、自動拡張、接続線、スマホ表示を検証します。</p><ol id="results"></ol><iframe></iframe>
+<script>
+(async()=>{
+const key='simple-mind-map-data',memory=new Map(),now=Date.now();
+const longText='これは文字数が多い場合にも途中で省略されず内容を最後までそのまま表示するための長いノード名です';
+const nodes=[{id:'root',text:'長い名前を確認するマインドマップのメインノード',parentId:null,x:400,y:250,color:'blue',createdAt:now,updatedAt:now},{id:'long',text:longText,parentId:'root',x:620,y:250,color:'green',createdAt:now,updatedAt:now}];
+memory.set(key,JSON.stringify({version:2,maps:[{id:'long-map',title:'長文確認',nodes,viewport:{x:0,y:0,scale:1},createdAt:now,updatedAt:now,isFavorite:false,deletedAt:null}],activeMapId:'long-map',updatedAt:now}));
+window.testStorage={getItem:k=>memory.get(k)??null,setItem:(k,v)=>memory.set(k,v),removeItem:k=>memory.delete(k)};
+const frame=document.querySelector('iframe'),html=await(await fetch('../index.html',{cache:'no-store'})).text(),boot='<base href="'+new URL('../',location.href).href+'"><script>Object.defineProperty(window,"localStorage",{value:parent.testStorage});<\/script>';
+await new Promise(resolve=>{frame.onload=resolve;frame.srcdoc=html.replace('<head>','<head>'+boot)});const w=frame.contentWindow,d=w.document;await new Promise(r=>setTimeout(r,180));
+const q=s=>d.querySelector(s),assert=(v,m)=>{if(!v)throw Error(m)},pause=(ms=180)=>new Promise(r=>setTimeout(r,ms));
+async function test(name,fn){const li=document.createElement('li');try{await fn();li.textContent='PASS '+name}catch(e){li.textContent='FAIL '+name+': '+e.message;li.className='fail'}document.querySelector('#results').append(li)}
+
+await test('long node text is rendered in full',()=>{const label=q('[data-node-id="long"] .node-label');assert(label.textContent===longText,'text changed');assert(label.scrollWidth<=label.clientWidth+1&&label.scrollHeight<=label.clientHeight+1,'content clipped')});
+await test('ellipsis and single-line clipping are disabled',()=>{const label=q('[data-node-id="long"] .node-label'),style=getComputedStyle(label);assert(style.textOverflow!=='ellipsis','ellipsis');assert(style.whiteSpace==='normal','white-space '+style.whiteSpace);assert(style.overflow!=='hidden','overflow '+style.overflow)});
+await test('desktop node expands and wraps inside its border',()=>{const node=q('[data-node-id="long"]'),label=node.querySelector('.node-label'),rect=node.getBoundingClientRect(),line=parseFloat(getComputedStyle(label).lineHeight);assert(rect.height>42,'height '+rect.height);assert(label.scrollHeight>line*1.5,'no wrap');assert(rect.width<=260.5,'too wide '+rect.width)});
+await test('a newly added long node is also shown in full',async()=>{q('[data-node-id="root"]').click();q('#quick-add').click();q('#node-name').value=longText+'（追加）';q('#node-form').dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));await pause();const added=[...d.querySelectorAll('.node')].find(node=>node.textContent===longText+'（追加）'),label=added?.querySelector('.node-label');assert(added&&label,'added node missing');assert(label.scrollHeight<=label.clientHeight+1&&label.scrollWidth<=label.clientWidth+1,'added node clipped')});
+await test('connection follows the expanded node',()=>{const node=q('[data-node-id="long"]'),path=q('.connections path[data-child-id="long"]');assert(path&&path.getAttribute('d'),'missing path');const before=path.getAttribute('d');node.style.left='75%';w.renderConnections('long');assert(path.getAttribute('d')!==before,'line did not follow')});
+await test('mobile keeps the full label visible without page overflow',async()=>{frame.style.width='390px';frame.style.height='844px';await pause();const node=q('[data-node-id="long"]'),label=node.querySelector('.node-label'),rect=node.getBoundingClientRect();assert(label.textContent===longText&&label.scrollHeight<=label.clientHeight+1,'mobile clipped');assert(rect.height>44,'mobile height');assert(d.documentElement.scrollWidth===390,'page overflow '+d.documentElement.scrollWidth)});
+document.body.dataset.done='true';
+})();
+</script></html>
