@@ -504,12 +504,14 @@ function findPosition(node) {
 }
 
 const AUTO_LAYOUT_ROOT = { x:400, y:250 };
-const AUTO_LAYOUT_HORIZONTAL_GAP = 205;
-const AUTO_LAYOUT_VERTICAL_GAP = 88;
+const AUTO_LAYOUT_HORIZONTAL_GAP = 72;
+const AUTO_LAYOUT_VERTICAL_GAP = 30;
+const AUTO_LAYOUT_DEFAULT_SIZE = { width:120, height:55 };
+const AUTO_LAYOUT_ROOT_SIZE = { width:168, height:60 };
 
 // Calculate into a separate Map first. Invalid or cyclic data never mutates the
 // current map, even if it somehow bypassed the normal storage validation.
-function calculateAutoLayout(targetNodes = nodes) {
+function calculateAutoLayout(targetNodes = nodes, measuredSizes = null) {
   if (!Array.isArray(targetNodes) || !targetNodes.length) return null;
   const byId = new Map(), children = new Map();
   for (const node of targetNodes) {
@@ -526,46 +528,78 @@ function calculateAutoLayout(targetNodes = nodes) {
     children.get(node.parentId).push(node);
   }
 
-  const weights = new Map(), visiting = new Set(), visited = new Set();
-  function calculateSubtreeSize(id) {
+  const root = roots[0];
+  const sizes = new Map(targetNodes.map(node=>{
+    const measured = measuredSizes instanceof Map ? measuredSizes.get(node.id) : null;
+    const fallback = node.id === root.id ? AUTO_LAYOUT_ROOT_SIZE : AUTO_LAYOUT_DEFAULT_SIZE;
+    return [node.id,{
+      width: Number.isFinite(measured?.width) && measured.width > 0 ? measured.width : fallback.width,
+      height: Number.isFinite(measured?.height) && measured.height > 0 ? measured.height : fallback.height,
+    }];
+  }));
+  const spans = new Map(), visiting = new Set(), visited = new Set();
+  function calculateSubtreeSpan(id) {
     if (visiting.has(id)) throw Error('cycle');
-    if (weights.has(id)) return weights.get(id);
+    if (spans.has(id)) return spans.get(id);
     visiting.add(id);
     visited.add(id);
     const descendants = children.get(id);
-    const size = descendants.length
-      ? descendants.reduce((total,child)=>total+calculateSubtreeSize(child.id),0) : 1;
+    const childSpan = descendants.reduce((total,child)=>total+calculateSubtreeSpan(child.id),0)
+      + Math.max(0,descendants.length-1)*AUTO_LAYOUT_VERTICAL_GAP;
+    const span = Math.max(sizes.get(id).height,childSpan);
     visiting.delete(id);
-    weights.set(id,size);
-    return size;
+    spans.set(id,span);
+    return span;
   }
-  try { calculateSubtreeSize(roots[0].id); }
+  try { calculateSubtreeSpan(root.id); }
   catch (error) { return null; }
   if (visited.size !== targetNodes.length) return null;
 
-  const positions = new Map([[roots[0].id,{...AUTO_LAYOUT_ROOT}]]);
-  function layoutSubtree(node,direction,depth,top) {
-    const span = weights.get(node.id)*AUTO_LAYOUT_VERTICAL_GAP;
-    positions.set(node.id,{ x:AUTO_LAYOUT_ROOT.x+direction*depth*AUTO_LAYOUT_HORIZONTAL_GAP,
-      y:top+span/2 });
-    let childTop = top;
-    for (const child of children.get(node.id)) {
-      layoutSubtree(child,direction,depth+1,childTop);
-      childTop += weights.get(child.id)*AUTO_LAYOUT_VERTICAL_GAP;
-    }
-  }
-  function layoutSide(branches,direction) {
-    const total = branches.reduce((sum,node)=>sum+weights.get(node.id),0)*AUTO_LAYOUT_VERTICAL_GAP;
-    let top = AUTO_LAYOUT_ROOT.y-total/2;
-    for (const branch of branches) {
-      layoutSubtree(branch,direction,1,top);
-      top += weights.get(branch.id)*AUTO_LAYOUT_VERTICAL_GAP;
-    }
-  }
-  const rootChildren = children.get(roots[0].id);
+  const rootChildren = children.get(root.id);
   const leftCount = Math.floor(rootChildren.length/2);
-  layoutSide(rootChildren.slice(0,leftCount),-1);
-  layoutSide(rootChildren.slice(leftCount),1);
+  const sides = [
+    { branches:rootChildren.slice(0,leftCount), direction:-1 },
+    { branches:rootChildren.slice(leftCount), direction:1 },
+  ];
+  const positions = new Map([[root.id,{...AUTO_LAYOUT_ROOT}]]);
+  for (const side of sides) {
+    const widthsByDepth = new Map([[0,sizes.get(root.id).width]]);
+    function collectWidths(node,depth) {
+      widthsByDepth.set(depth,Math.max(widthsByDepth.get(depth) || 0,sizes.get(node.id).width));
+      children.get(node.id).forEach(child=>collectWidths(child,depth+1));
+    }
+    side.branches.forEach(branch=>collectWidths(branch,1));
+    const xByDepth = new Map([[0,AUTO_LAYOUT_ROOT.x]]);
+    for (let depth=1; widthsByDepth.has(depth); depth++) {
+      const distance = (widthsByDepth.get(depth-1)+widthsByDepth.get(depth))/2
+        + AUTO_LAYOUT_HORIZONTAL_GAP;
+      xByDepth.set(depth,xByDepth.get(depth-1)+side.direction*distance);
+    }
+    side.xByDepth = xByDepth;
+  }
+
+  function layoutSubtree(node,side,depth,top) {
+    const span = spans.get(node.id);
+    positions.set(node.id,{ x:side.xByDepth.get(depth), y:top+span/2 });
+    const descendants = children.get(node.id);
+    const childrenSpan = descendants.reduce((total,child)=>total+spans.get(child.id),0)
+      + Math.max(0,descendants.length-1)*AUTO_LAYOUT_VERTICAL_GAP;
+    let childTop = top+(span-childrenSpan)/2;
+    for (const child of descendants) {
+      layoutSubtree(child,side,depth+1,childTop);
+      childTop += spans.get(child.id)+AUTO_LAYOUT_VERTICAL_GAP;
+    }
+  }
+  function layoutSide(side) {
+    const total = side.branches.reduce((sum,node)=>sum+spans.get(node.id),0)
+      + Math.max(0,side.branches.length-1)*AUTO_LAYOUT_VERTICAL_GAP;
+    let top = AUTO_LAYOUT_ROOT.y-total/2;
+    for (const branch of side.branches) {
+      layoutSubtree(branch,side,1,top);
+      top += spans.get(branch.id)+AUTO_LAYOUT_VERTICAL_GAP;
+    }
+  }
+  sides.forEach(layoutSide);
   return positions;
 }
 
@@ -573,7 +607,11 @@ function autoLayoutCurrentMap() {
   if (pointers.size || editor.open || deleteDialog.open || mapDialog.open || importDialog.open || noteDialog.open) return false;
   const map = getActiveMap();
   if (!map || map.nodes !== nodes) return false;
-  const positions = calculateAutoLayout(map.nodes);
+  const measuredSizes = new Map(map.nodes.map(node=>{
+    const rect = worldRect(node.id);
+    return [node.id,{ width:rect.right-rect.left, height:rect.bottom-rect.top }];
+  }));
+  const positions = calculateAutoLayout(map.nodes,measuredSizes);
   if (!positions || positions.size !== map.nodes.length) {
     console.warn('Simple Mind Map: auto layout skipped because the node tree is invalid');
     notify('自動整理できませんでした');

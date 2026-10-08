@@ -1,0 +1,38 @@
+<!doctype html><html lang="ja"><meta charset="utf-8"><title>STEP21 size-aware auto layout tests</title>
+<style>body{font:14px system-ui}iframe{width:1200px;height:800px;border:1px solid #ddd}li{padding:4px}.fail{color:#b00020}</style>
+<h1>STEP21 size-aware auto layout tests</h1><p>長いノード名を含む自動整理で、ノードと文字が重ならないことを検証します。</p><ol id="results"></ol><iframe></iframe>
+<script>
+(async()=>{
+const key='simple-mind-map-data',memory=new Map(),now=Date.now();
+const make=(id,text,parentId,color='blue')=>({id,text,parentId,x:400,y:250,color,createdAt:now,updatedAt:now});
+const nodes=[
+  make('root','長い内容を整理するメインテーマ',null),
+  make('l1','左側のとても長いプロジェクト名を省略せずに表示します','root','green'),
+  make('l1a','調査結果と関連する資料をすべて確認するための長い項目','l1','orange'),
+  make('l1b','次回の会議までに準備する内容と担当者を整理する項目','l1','purple'),
+  make('l2','もうひとつの左側に配置される長い名前のカテゴリ','root','cyan'),
+  make('l2a','複数行になっても他のノードと重ならない子ノード','l2','red'),
+  make('r1','右側のとても長い計画名を全文のまま表示します','root','yellow'),
+  make('r1a','今週中に対応したい具体的なタスクと確認事項の一覧','r1','gray'),
+  make('r1b','関係者に共有する情報を分かりやすくまとめた項目','r1','blue'),
+  make('r2','別の右側カテゴリにも十分な余白を確保します','root','green'),
+  make('r2a','深い階層でも横方向に文字が重ならない長いノード名','r2','orange'),
+  make('r2a1','さらに深い階層へ続く詳細な作業内容を記載したノード','r2a','purple'),
+];
+memory.set(key,JSON.stringify({version:2,maps:[{id:'layout-map',title:'長文自動整理',nodes,viewport:{x:0,y:0,scale:1},createdAt:now,updatedAt:now,isFavorite:false,deletedAt:null}],activeMapId:'layout-map',updatedAt:now}));
+window.testStorage={getItem:k=>memory.get(k)??null,setItem:(k,v)=>memory.set(k,v),removeItem:k=>memory.delete(k)};
+const frame=document.querySelector('iframe'),html=await(await fetch('../index.html',{cache:'no-store'})).text(),boot='<base href="'+new URL('../',location.href).href+'"><script>Object.defineProperty(window,"localStorage",{value:parent.testStorage});<\/script>';
+await new Promise(resolve=>{frame.onload=resolve;frame.srcdoc=html.replace('<head>','<head>'+boot)});const w=frame.contentWindow,d=w.document;await new Promise(r=>setTimeout(r,180));
+const q=s=>d.querySelector(s),assert=(v,m)=>{if(!v)throw Error(m)},pause=(ms=180)=>new Promise(r=>setTimeout(r,ms));
+async function test(name,fn){const li=document.createElement('li');try{await fn();li.textContent='PASS '+name}catch(e){li.textContent='FAIL '+name+': '+e.message;li.className='fail'}document.querySelector('#results').append(li)}
+const assertNoOverlap=()=>{const elements=[...d.querySelectorAll('.node')],rects=elements.map(element=>({id:element.dataset.nodeId,rect:element.getBoundingClientRect()}));for(let i=0;i<rects.length;i++)for(let j=i+1;j<rects.length;j++){const a=rects[i],b=rects[j],overlap=a.rect.left<b.rect.right&&a.rect.right>b.rect.left&&a.rect.top<b.rect.bottom&&a.rect.bottom>b.rect.top;assert(!overlap,`${a.id} / ${b.id} overlap`)}};
+
+await test('auto layout measures long node dimensions',async()=>{q('[data-action="auto-layout"]').click();await pause();assertNoOverlap()});
+await test('all long labels remain fully visible after layout',()=>{for(const label of d.querySelectorAll('.node-label'))assert(label.scrollWidth<=label.clientWidth+1&&label.scrollHeight<=label.clientHeight+1,'clipped '+label.textContent)});
+await test('depth spacing accounts for the widest nodes',()=>{const root=q('[data-node-id="root"]').getBoundingClientRect(),left=q('[data-node-id="l1"]').getBoundingClientRect(),right=q('[data-node-id="r1"]').getBoundingClientRect(),deep=q('[data-node-id="r2a1"]').getBoundingClientRect();assert(left.right<root.left&&right.left>root.right,'root gap');assert(deep.left>right.right,'depth gap')});
+await test('connections redraw for every parent-child pair',()=>{assert(q('.connections').children.length===nodes.length-1,'connection count')});
+await test('mobile auto layout also keeps nodes separate',async()=>{frame.style.width='390px';frame.style.height='844px';await pause();q('[data-action="auto-layout"]').click();await pause();assertNoOverlap();for(const label of d.querySelectorAll('.node-label'))assert(label.scrollHeight<=label.clientHeight+1,'mobile clipped')});
+await test('layout result is persisted',async()=>{await pause(500);const saved=JSON.parse(memory.get(key)).maps[0].nodes;assert(saved.some(node=>node.x!==400||node.y!==250),'positions not saved');assert(saved.find(node=>node.id==='root').x===400&&saved.find(node=>node.id==='root').y===250,'root moved')});
+document.body.dataset.done='true';
+})();
+</script></html>

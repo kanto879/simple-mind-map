@@ -3,7 +3,7 @@
 <h1>Regression suite</h1><ol id="results"></ol>
 <script>
 (async()=>{
-for(const step of [4,5,6,7,8,9,10,11,12,13,14,15,18,19,20]){
+for(const step of [4,5,6,7,8,9,10,11,12,13,14,15,18,19,20,21]){
  const frame=document.createElement('iframe');frame.src=`step${step}.html?suite=${Date.now()}`;document.body.append(frame);
  await new Promise(resolve=>frame.addEventListener('load',resolve,{once:true}));
  const timeoutMs=step===5?900000:360000,start=Date.now();while(frame.contentDocument.body.dataset.done!=='true'&&Date.now()-start<timeoutMs)await new Promise(r=>setTimeout(r,100));
