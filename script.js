@@ -506,13 +506,20 @@ function findPosition(node) {
 const AUTO_LAYOUT_ROOT = { x:400, y:250 };
 const AUTO_LAYOUT_HORIZONTAL_GAP = 72;
 const AUTO_LAYOUT_VERTICAL_GAP = 30;
+const AUTO_LAYOUT_MOBILE_HORIZONTAL_GAP = 96;
+const AUTO_LAYOUT_MOBILE_VERTICAL_GAP = 48;
+const AUTO_LAYOUT_MOBILE_MIN_SCALE = .65;
 const AUTO_LAYOUT_DEFAULT_SIZE = { width:120, height:55 };
 const AUTO_LAYOUT_ROOT_SIZE = { width:168, height:60 };
 
 // Calculate into a separate Map first. Invalid or cyclic data never mutates the
 // current map, even if it somehow bypassed the normal storage validation.
-function calculateAutoLayout(targetNodes = nodes, measuredSizes = null) {
+function calculateAutoLayout(targetNodes = nodes, measuredSizes = null, options = {}) {
   if (!Array.isArray(targetNodes) || !targetNodes.length) return null;
+  const horizontalGap = Number.isFinite(options.horizontalGap)
+    ? Math.max(0,options.horizontalGap) : AUTO_LAYOUT_HORIZONTAL_GAP;
+  const verticalGap = Number.isFinite(options.verticalGap)
+    ? Math.max(0,options.verticalGap) : AUTO_LAYOUT_VERTICAL_GAP;
   const byId = new Map(), children = new Map();
   for (const node of targetNodes) {
     if (!node || typeof node.id !== 'string' || !node.id || byId.has(node.id)
@@ -545,7 +552,7 @@ function calculateAutoLayout(targetNodes = nodes, measuredSizes = null) {
     visited.add(id);
     const descendants = children.get(id);
     const childSpan = descendants.reduce((total,child)=>total+calculateSubtreeSpan(child.id),0)
-      + Math.max(0,descendants.length-1)*AUTO_LAYOUT_VERTICAL_GAP;
+      + Math.max(0,descendants.length-1)*verticalGap;
     const span = Math.max(sizes.get(id).height,childSpan);
     visiting.delete(id);
     spans.set(id,span);
@@ -572,7 +579,7 @@ function calculateAutoLayout(targetNodes = nodes, measuredSizes = null) {
     const xByDepth = new Map([[0,AUTO_LAYOUT_ROOT.x]]);
     for (let depth=1; widthsByDepth.has(depth); depth++) {
       const distance = (widthsByDepth.get(depth-1)+widthsByDepth.get(depth))/2
-        + AUTO_LAYOUT_HORIZONTAL_GAP;
+        + horizontalGap;
       xByDepth.set(depth,xByDepth.get(depth-1)+side.direction*distance);
     }
     side.xByDepth = xByDepth;
@@ -583,20 +590,20 @@ function calculateAutoLayout(targetNodes = nodes, measuredSizes = null) {
     positions.set(node.id,{ x:side.xByDepth.get(depth), y:top+span/2 });
     const descendants = children.get(node.id);
     const childrenSpan = descendants.reduce((total,child)=>total+spans.get(child.id),0)
-      + Math.max(0,descendants.length-1)*AUTO_LAYOUT_VERTICAL_GAP;
+      + Math.max(0,descendants.length-1)*verticalGap;
     let childTop = top+(span-childrenSpan)/2;
     for (const child of descendants) {
       layoutSubtree(child,side,depth+1,childTop);
-      childTop += spans.get(child.id)+AUTO_LAYOUT_VERTICAL_GAP;
+      childTop += spans.get(child.id)+verticalGap;
     }
   }
   function layoutSide(side) {
     const total = side.branches.reduce((sum,node)=>sum+spans.get(node.id),0)
-      + Math.max(0,side.branches.length-1)*AUTO_LAYOUT_VERTICAL_GAP;
+      + Math.max(0,side.branches.length-1)*verticalGap;
     let top = AUTO_LAYOUT_ROOT.y-total/2;
     for (const branch of side.branches) {
       layoutSubtree(branch,side,1,top);
-      top += spans.get(branch.id)+AUTO_LAYOUT_VERTICAL_GAP;
+      top += spans.get(branch.id)+verticalGap;
     }
   }
   sides.forEach(layoutSide);
@@ -611,7 +618,10 @@ function autoLayoutCurrentMap() {
     const rect = worldRect(node.id);
     return [node.id,{ width:rect.right-rect.left, height:rect.bottom-rect.top }];
   }));
-  const positions = calculateAutoLayout(map.nodes,measuredSizes);
+  const positions = calculateAutoLayout(map.nodes,measuredSizes,mobile.matches ? {
+    horizontalGap:AUTO_LAYOUT_MOBILE_HORIZONTAL_GAP,
+    verticalGap:AUTO_LAYOUT_MOBILE_VERTICAL_GAP,
+  } : {});
   if (!positions || positions.size !== map.nodes.length) {
     console.warn('Simple Mind Map: auto layout skipped because the node tree is invalid');
     notify('自動整理できませんでした');
@@ -628,6 +638,12 @@ function autoLayoutCurrentMap() {
     scheduleSave();
   }
   fitToView();
+  if (mobile.matches && viewport.scale < AUTO_LAYOUT_MOBILE_MIN_SCALE) {
+    const root = map.nodes.find(node=>node.parentId===null);
+    const rect = worldRect(root.id), area = viewArea();
+    placeAnchor({ x:(rect.left+rect.right)/2, y:(rect.top+rect.bottom)/2 },
+      (area.left+area.right)/2,(area.top+area.bottom)/2,AUTO_LAYOUT_MOBILE_MIN_SCALE);
+  }
   notify(changed ? 'ノードを自動整理しました' : 'すでに整理されています');
   return changed;
 }
